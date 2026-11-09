@@ -1,0 +1,542 @@
+name: DomainToNodeReact
+instanceOf: Core:Model
+elements:
+  - name: mongo
+    instanceOf: Core:Package
+    elements:
+      - name: EntityToCollection
+        instanceOf: Core:Class
+        icon: mui:Inventory2
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:Entity
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              type: Application:mongo.Collection
+            code: |
+              import { Collection, Field } from 'Application/mongo'
+              import {
+                fieldToField,
+                relationToReference
+              } from 'DomainToNodeReact/mongo'
+
+              /**
+               * EntityToCollection — the Mongo collection of an entity (rules 11 to 13,
+               * 16 and 17).
+               *
+               * The collection is named after the entity and holds:
+               * - the key field `id`, a string, which holds a UUID (Q6);
+               * - one field per field of the entity and of its ancestors (FieldToField);
+               * - for each relation that gives a reference field, that field and its
+               *   reference (RelationToReference): `<relation>Id` for a single-valued
+               *   relation, the array `<relation>Ids` for a multi-valued one;
+               * - `state` when the entity has a lifecycle.
+               *
+               * Left to the stack pattern, which knows every entity: the collection each
+               * reference targets, the `<parent>Id` field and reference of a composition
+               * child (rule 15) and the audit fields.
+               */
+              export default function (source) {
+                const text = e('Core:String')
+                const fields = this.fieldsOf(source).map((field: any) => map(field, fieldToField))
+
+                // A relation gives a field and its reference, in this order.
+                const links = this.referenceRelationsOf(source)
+                  .filter((relation: any) => this.canProduce(source, this.referenceFieldName(relation)))
+                  .map((relation: any) => mapAll(relation, relationToReference))
+
+                // The key: the produced `id`, or the field of a domain field named `id`.
+                const produced = this.canProduce(source, 'id')
+                const id = produced
+                  ? new Field({ name: 'id', type: text, mandatory: true, bsonType: 'string' })
+                  : fields.find((field: any) => field.name === 'id')
+                const state = !!source.lifecycle && this.canProduce(source, 'state')
+                  ? [new Field({ name: 'state', type: text, mandatory: true, bsonType: 'string' })]
+                  : []
+
+                return new Collection({
+                  name: source.name,
+                  fields: [
+                    ...(produced && id ? [id] : []),
+                    ...fields,
+                    ...links.map(([field]: any[]) => field),
+                    ...state
+                  ],
+                  references: links.map(([, reference]: any[]) => reference),
+                  ...(id ? { key: id } : {})
+                })
+              }
+      - name: FieldToField
+        instanceOf: Core:Class
+        icon: mui:ShortText
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:Field
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              type: Application:mongo.Field
+            code: |
+              import { Field } from 'Application/mongo'
+
+              /** The BSON type of each kind of field (rule 12). */
+              const BSON_TYPES: Record<string, string> = {
+                String: 'string',
+                Number: 'double',
+                Boolean: 'bool',
+                Date: 'date',
+                enum: 'string',
+                multiple: 'array'
+              }
+
+              /**
+               * FieldToField — the Mongo field of a domain field (rule 12): the same
+               * name, type and flags, and the BSON type of its kind.
+               */
+              export default function (source) {
+                return new Field({
+                  name: source.name,
+                  type: source.type,
+                  ...(source.mandatory ? { mandatory: true } : {}),
+                  ...(source.multiple ? { multiple: true } : {}),
+                  bsonType: BSON_TYPES[this.kindOf(source)] ?? 'string'
+                })
+              }
+      - name: RelationToReference
+        instanceOf: Core:Class
+        icon: mui:Link
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:EntityRelation
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              multiple: true
+              type: Core:Element
+            code: |
+              import { Field, Reference } from 'Application/mongo'
+
+              /**
+               * RelationToReference — what a relation gives its collection (rules 13
+               * and 16), in this order:
+               * - the field `<relation>Id`, a string, mandatory when the relation is;
+               *   or for a multi-valued relation the array `<relation>Ids`;
+               * - the reference `<relation>`, carried by that field, multiple for a
+               *   multi-valued relation.
+               *
+               * Left to the stack pattern, which knows every collection: the collection
+               * the reference targets.
+               */
+              export default function (source) {
+                const field = new Field({
+                  name: this.referenceFieldName(source),
+                  into: 'fields',
+                  type: e('Core:String'),
+                  ...(source.multiple
+                    ? { multiple: true, bsonType: 'array' }
+                    : { ...(source.mandatory ? { mandatory: true } : {}), bsonType: 'string' })
+                })
+                return [
+                  field,
+                  new Reference({
+                    name: source.name,
+                    into: 'references',
+                    field,
+                    ...(source.multiple ? { multiple: true } : {})
+                  })
+                ]
+              }
+      - name: entityToCollection
+        instanceOf: DomainToNodeReact:mongo.EntityToCollection
+        source: Domain:Entity
+        target: Application:mongo.Database
+        outputRelation: Application:data.Store.records
+      - name: fieldToField
+        instanceOf: DomainToNodeReact:mongo.FieldToField
+        source: Domain:Field
+        target: Application:mongo.Collection
+        outputRelation: Application:data.Record.fields
+      - name: relationToReference
+        instanceOf: DomainToNodeReact:mongo.RelationToReference
+        source: Domain:EntityRelation
+        target: Application:mongo.Collection
+  - name: node
+    instanceOf: Core:Package
+    elements:
+      - name: EntityToModel
+        instanceOf: Core:Class
+        icon: mui:DataObject
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:Entity
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              type: Node:mongoose.Model
+            code: |
+              import { Model } from 'Node/mongoose'
+
+              /**
+               * EntityToModel — the Mongoose model of an entity (rule 35), named after
+               * it.
+               *
+               * Left to the stack pattern, which knows the collection and the options:
+               * the collection it reads and writes, and `timestamps`, on when the
+               * option `audit` is.
+               */
+              export default function (source) {
+                return new Model({ name: source.name })
+              }
+      - name: EntityToService
+        instanceOf: Core:Class
+        icon: mui:Settings
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:Entity
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              type: Node:service.Service
+            code: |
+              import { Service } from 'Node/service'
+
+              /**
+               * EntityToService — the service of an entity (rule 35):
+               * `<Entity>Service`.
+               *
+               * Left to the stack pattern: the Mongoose model it uses.
+               */
+              export default function (source) {
+                return new Service({ name: `${source.name}Service` })
+              }
+      - name: EntityToRouter
+        instanceOf: Core:Class
+        icon: mui:AltRoute
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:Entity
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              type: Node:express.Router
+            code: |
+              import { Router } from 'Node/express'
+
+              /**
+               * EntityToRouter — the Express router of an entity (rule 35):
+               * `<Entity>Router`.
+               *
+               * Left to the stack pattern: the resource it exposes, the endpoints it
+               * serves and the service it calls.
+               */
+              export default function (source) {
+                return new Router({ name: `${source.name}Router` })
+              }
+      - name: DomainToNode
+        instanceOf: Core:Class
+        icon: thesvg:nodedotjs
+        extends:
+          - DomainToApplication:app.DomainToStack
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Core:Model
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              multiple: true
+              type: Core:Element
+            code: |
+              import { Server } from 'Node/express'
+              import {
+                entityToModel,
+                entityToRouter,
+                entityToService,
+                nodeApplication,
+                nodeAuditedApplication
+              } from 'DomainToNodeReact/node'
+
+              /**
+               * DomainToNode — the stack pattern for Node and Express (rules 4, 34 and
+               * 35). Branched on a whole domain model, it produces three roots in the
+               * target of its Mapping, a model or a package (PLAT-1157):
+               * - the Application `<Name>` (StackApplication), named by
+               *   `applicationNameOf`: a Mongo database and
+               *   the API;
+               * - the package `node` with the Express server `<name>`, in lower case,
+               *   on port 3000, which realises it: per entity a Mongoose model of its
+               *   collection, a service that uses the model and a router of its
+               *   resource that calls the service;
+               * - the package `react` with the React interface `web` of the
+               *   Application, which designates it without containing it (Q2).
+               *
+               * Option: `audit` (rule 18), which also turns `timestamps` on in every
+               * Mongoose model.
+               */
+              export default function (source) {
+                const stack: any = this.audit ? nodeAuditedApplication : nodeApplication
+                const application: any = map(source, stack)
+                const collections = new Map<string, any>(
+                  application.stores[0].records.map((collection: any) => [collection.name, collection])
+                )
+                const resources = new Map<string, any>(
+                  application.apis[0].resources.map((resource: any) => [resource.name, resource])
+                )
+
+                const models: any[] = []
+                const services: any[] = []
+                const routers: any[] = []
+                for (const entity of this.entitiesOf(source)) {
+                  const model: any = map(entity, entityToModel)
+                  Object.assign(model, {
+                    collection: collections.get(entity.name),
+                    ...(this.audit ? { timestamps: true } : {})
+                  })
+                  const service: any = map(entity, entityToService)
+                  service.models = [model]
+                  const router: any = map(entity, entityToRouter)
+                  const resource = resources.get(entity.name)
+                  Object.assign(router, { resource, endpoints: [...resource.endpoints], service })
+                  models.push(model)
+                  services.push(service)
+                  routers.push(router)
+                }
+
+                const server = new Server({
+                  name: this.applicationNameOf(source).toLowerCase(),
+                  application,
+                  port: 3000,
+                  models,
+                  services,
+                  routers
+                } as any)
+                return [
+                  application,
+                  { instanceOf: 'Core:Package', name: 'node', into: 'elements', elements: [server] },
+                  { instanceOf: 'Core:Package', name: stack.frontendPackage, into: 'elements', elements: [...application.frontends] }
+                ]
+              }
+      - name: entityToModel
+        instanceOf: DomainToNodeReact:node.EntityToModel
+        source: Domain:Entity
+        target: Node:express.Server
+        outputRelation: Node:express.Server.models
+      - name: entityToService
+        instanceOf: DomainToNodeReact:node.EntityToService
+        source: Domain:Entity
+        target: Node:express.Server
+        outputRelation: Node:express.Server.services
+      - name: entityToRouter
+        instanceOf: DomainToNodeReact:node.EntityToRouter
+        source: Domain:Entity
+        target: Node:express.Server
+        outputRelation: Node:express.Server.routers
+      - name: domainToNode
+        instanceOf: DomainToNodeReact:node.DomainToNode
+        source: Core:Model
+        target: Core:Container
+      - name: nodeApplication
+        instanceOf: DomainToApplication:app.StackApplication
+        source: Core:Model
+        target: Core:Model
+        database: Application:mongo.Database
+        record: DomainToNodeReact:mongo.entityToCollection
+        frontend: React:Frontend
+        service: DomainToNodeReact:react.entityToApiClient
+        frontendPackage: react
+      - name: nodeAuditedApplication
+        instanceOf: DomainToApplication:app.StackApplication
+        source: Core:Model
+        target: Core:Model
+        audit: true
+        database: Application:mongo.Database
+        record: DomainToNodeReact:mongo.entityToCollection
+        frontend: React:Frontend
+        service: DomainToNodeReact:react.entityToApiClient
+        frontendPackage: react
+  - name: react
+    instanceOf: Core:Package
+    elements:
+      - name: EntityToApiClient
+        instanceOf: Core:Class
+        icon: mui:CloudSync
+        extends:
+          - DomainToApplication:app.DomainPattern
+        properties:
+          - name: map
+            instanceOf: Core:FunctionProperty
+            mandatory: true
+            input:
+              - name: source
+                instanceOf: Core:InputFeature
+                mandatory: true
+                type: Domain:Entity
+            output:
+              name: output
+              instanceOf: Core:OutputFeature
+              mandatory: true
+              type: React:ApiClient
+            code: |
+              import { ApiClient } from 'React'
+
+              /**
+               * EntityToApiClient — the React client of the resource of an entity
+               * (rule 29): `<Entity>Api`.
+               *
+               * Left to the stack pattern, which knows the resource: the resource and the
+               * endpoints it serves.
+               */
+              export default function (source) {
+                return new ApiClient({ name: `${source.name}Api` })
+              }
+      - name: entityToApiClient
+        instanceOf: DomainToNodeReact:react.EntityToApiClient
+        source: Domain:Entity
+        target: React:Frontend
+        outputRelation: Application:spa.Frontend.services
+  - name: PatternsClassDiagram
+    instanceOf: Diagram:core.Diagram
+    type: Uml:ClassDiagram
+    subject: DomainToNodeReact
+    nodes:
+      - name: AppDomainPattern
+        instanceOf: Diagram:core.Node
+        element: DomainToApplication:app.DomainPattern
+        x: 0
+        'y': -420
+        width: 200
+        height: 264
+      - name: AppDomainToStack
+        instanceOf: Diagram:core.Node
+        element: DomainToApplication:app.DomainToStack
+        x: -290
+        'y': -240
+        width: 200
+        height: 72
+      - name: NodeDomainToNode
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:node.DomainToNode
+        x: -290
+        'y': -60
+        width: 200
+        height: 56
+      - name: ReactEntityToApiClient
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:react.EntityToApiClient
+        x: 0
+        'y': -240
+        width: 200
+        height: 56
+      - name: MongoEntityToCollection
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:mongo.EntityToCollection
+        x: 250
+        'y': -240
+        width: 200
+        height: 56
+      - name: MongoFieldToField
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:mongo.FieldToField
+        x: 250
+        'y': -140
+        width: 200
+        height: 56
+      - name: MongoRelationToReference
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:mongo.RelationToReference
+        x: 250
+        'y': -40
+        width: 200
+        height: 56
+      - name: NodeEntityToModel
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:node.EntityToModel
+        x: 500
+        'y': -240
+        width: 200
+        height: 56
+      - name: NodeEntityToService
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:node.EntityToService
+        x: 500
+        'y': -140
+        width: 200
+        height: 56
+      - name: NodeEntityToRouter
+        instanceOf: Diagram:core.Node
+        element: DomainToNodeReact:node.EntityToRouter
+        x: 500
+        'y': -40
+        width: 200
+        height: 56
+version: latest
+depends:
+  - Mapping
+  - Diagram
+  - Uml
+  - metaltura/domain/Domain@v1.0.0
+  - metaltura/application/Application@v1.0.0
+  - metaltura/application/DomainToApplication@v1.0.0
+  - metaltura/node/Node@v1.0.0
+  - metaltura/react/React@v1.0.0

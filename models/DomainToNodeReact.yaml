@@ -17,7 +17,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:Entity
+                type: Domain:entities.Entity
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -89,7 +89,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:Field
+                type: Domain:entities.Field
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -134,7 +134,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:EntityRelation
+                type: Domain:entities.EntityRelation
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -176,17 +176,17 @@ elements:
               }
       - name: entityToCollection
         instanceOf: DomainToNodeReact:mongo.EntityToCollection
-        source: Domain:Entity
+        source: Domain:entities.Entity
         target: Application:mongo.Database
         outputRelation: Application:data.Store.records
       - name: fieldToField
         instanceOf: DomainToNodeReact:mongo.FieldToField
-        source: Domain:Field
+        source: Domain:entities.Field
         target: Application:mongo.Collection
         outputRelation: Application:data.Record.fields
       - name: relationToReference
         instanceOf: DomainToNodeReact:mongo.RelationToReference
-        source: Domain:EntityRelation
+        source: Domain:entities.EntityRelation
         target: Application:mongo.Collection
   - name: node
     instanceOf: Core:Package
@@ -204,7 +204,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:Entity
+                type: Domain:entities.Entity
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -237,7 +237,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:Entity
+                type: Domain:entities.Entity
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -268,7 +268,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:Entity
+                type: Domain:entities.Entity
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -379,17 +379,17 @@ elements:
               }
       - name: entityToModel
         instanceOf: DomainToNodeReact:node.EntityToModel
-        source: Domain:Entity
+        source: Domain:entities.Entity
         target: Node:express.Server
         outputRelation: Node:express.Server.models
       - name: entityToService
         instanceOf: DomainToNodeReact:node.EntityToService
-        source: Domain:Entity
+        source: Domain:entities.Entity
         target: Node:express.Server
         outputRelation: Node:express.Server.services
       - name: entityToRouter
         instanceOf: DomainToNodeReact:node.EntityToRouter
-        source: Domain:Entity
+        source: Domain:entities.Entity
         target: Node:express.Server
         outputRelation: Node:express.Server.routers
       - name: domainToNode
@@ -431,7 +431,7 @@ elements:
               - name: source
                 instanceOf: Core:InputFeature
                 mandatory: true
-                type: Domain:Entity
+                type: Domain:entities.Entity
             output:
               name: output
               instanceOf: Core:OutputFeature
@@ -452,7 +452,7 @@ elements:
               }
       - name: entityToApiClient
         instanceOf: DomainToNodeReact:react.EntityToApiClient
-        source: Domain:Entity
+        source: Domain:entities.Entity
         target: React:Frontend
         outputRelation: Application:spa.Frontend.services
   - name: PatternsClassDiagram
@@ -535,7 +535,7 @@ depends:
   - Mapping
   - Diagram
   - Uml
-  - metaltura/domain/Domain@v1.0.0
+  - metaltura/domain/Domain@main
   - metaltura/application/Application@v1.0.0
   - metaltura/application/DomainToApplication@v1.0.0
   - metaltura/node/Node@v1.0.0

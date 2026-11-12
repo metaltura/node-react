@@ -18,10 +18,10 @@ La pile Node + Express + React : les patrons qui écrivent, depuis un modèle de
 
 | Dépôt | Ce qu'il en emploie | Ligne `depends` |
 | --- | --- | --- |
-| `metaltura/domain` | `Domain`, que lit `DomainToNodeReact` | `metaltura/domain/Domain@v1.0.0` |
-| `metaltura/application` | `Application`, `DomainToApplication` et `ApplicationToCode` | `metaltura/application/Application@v1.0.0`<br>`metaltura/application/DomainToApplication@v1.0.0`<br>`metaltura/application/ApplicationToCode@v1.0.0` |
-| `metaltura/node` | `Node` | `metaltura/node/Node@v1.0.0` |
-| `metaltura/react` | `React` | `metaltura/react/React@v1.0.0` |
+| `metaltura/domain` | `Domain`, que lit `DomainToNodeReact` | `metaltura/domain/Domain@v2.0.0` |
+| `metaltura/application` | `Application`, `DomainToApplication` et `ApplicationToCode` | `metaltura/application/Application@v2.0.0`<br>`metaltura/application/DomainToApplication@v2.0.0`<br>`metaltura/application/ApplicationToCode@v2.0.0` |
+| `metaltura/node` | `Node` | `metaltura/node/Node@v2.0.0` |
+| `metaltura/react` | `React` | `metaltura/react/React@v2.0.0` |
 
 Ces modèles système de Metaltura s'écrivent par leur nom seul :
 
@@ -36,12 +36,12 @@ Un modèle qui branche la pile sur son domaine écrit dans sa liste `depends` le
 
 ```yaml
 depends:
-  - metaltura/application/Application@v1.0.0
-  - metaltura/node/Node@v1.0.0
-  - metaltura/react/React@v1.0.0
-  - metaltura/application/DomainToApplication@v1.0.0
-  - metaltura/node-react/DomainToNodeReact@v1.0.0
-  - metaltura/node-react/NodeReactToCode@v1.0.0
+  - metaltura/application/Application@v2.0.0
+  - metaltura/node/Node@v2.0.0
+  - metaltura/react/React@v2.0.0
+  - metaltura/application/DomainToApplication@v2.0.0
+  - metaltura/node-react/DomainToNodeReact@v2.0.0
+  - metaltura/node-react/NodeReactToCode@v2.0.0
 ```
 
 C'est la liste de `BoutiqueNodeReact` dans `metaltura/examples`. Elle nomme en plus, par leur nom seul :
@@ -50,7 +50,7 @@ C'est la liste de `BoutiqueNodeReact` dans `metaltura/examples`. Elle nomme en p
 - son domaine, `BoutiqueDomain` ;
 - `FileSystem`.
 
-Metaltura clone chaque dépôt nommé à l'étiquette `v1.0.0`. Toute la librairie est à `v1.0.0` : Metaltura refuse qu'un même dépôt soit demandé à deux versions.
+Metaltura clone chaque dépôt nommé à l'étiquette `v2.0.0`. Toute la librairie est à `v2.0.0` : Metaltura refuse qu'un même dépôt soit demandé à deux versions.
 
 ## D'où il vient
 

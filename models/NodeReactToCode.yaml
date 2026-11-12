@@ -2824,7 +2824,7 @@ depends:
   - FileSystem
   - Diagram
   - Uml
-  - metaltura/application/Application@v1.0.0
-  - metaltura/application/ApplicationToCode@v1.0.0
-  - metaltura/node/Node@v1.0.0
-  - metaltura/react/React@v1.0.0
+  - metaltura/application/Application@v2.0.0
+  - metaltura/application/ApplicationToCode@v2.0.0
+  - metaltura/node/Node@v2.0.0
+  - metaltura/react/React@v2.0.0

@@ -535,8 +535,8 @@ depends:
   - Mapping
   - Diagram
   - Uml
-  - metaltura/domain/Domain@main
-  - metaltura/application/Application@v1.0.0
-  - metaltura/application/DomainToApplication@v1.0.0
-  - metaltura/node/Node@v1.0.0
-  - metaltura/react/React@v1.0.0
+  - metaltura/domain/Domain@v2.0.0
+  - metaltura/application/Application@v2.0.0
+  - metaltura/application/DomainToApplication@v2.0.0
+  - metaltura/node/Node@v2.0.0
+  - metaltura/react/React@v2.0.0
